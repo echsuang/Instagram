@@ -25,6 +25,7 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
         if (showButtons && buttonRect.contains(clickPoint) && importedImage.empty()) {
             freeze = !freeze; // 切換凍結狀態
             cout << (freeze ? "畫面已凍結。" : "畫面已恢復。") << endl;
+            showButtons = !freeze; // 同步更新 showButtons 的狀態
             if (freeze && capturedFrame.empty()) {
                 // 在凍結時保存當前畫面
                 Mat tempFrame;
@@ -46,6 +47,7 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
                 else {
                     cout << "警告：凍結時無法讀取畫面。" << endl;
                     freeze = false; // 如果無法讀取，則取消凍結
+                    showButtons = true; // 取消凍結時重新顯示按鈕
                 }
             }
         }
@@ -114,19 +116,23 @@ int main() {
             if (frame.empty()) break;
 
             // --- 9:16 裁切 ---
+            /*原攝影機的長寬*/
             int frame_width = frame.cols;
             int frame_height = frame.rows;
 
+            /*顯示的長寬*/
             int crop_height = frame_height;
             int crop_width = crop_height * 9 / 16;
+            /*檢查新的寬度是否超過原攝影機的長寬，如果超過就把寬當高，再重新計算*/
             if (crop_width > frame_width) {
                 crop_width = frame_width;
                 crop_height = crop_width * 16 / 9;
             }
-
+            /*計算出原攝影機顯示畫面左上角的座標*/
             int x = (frame_width - crop_width) / 2;
             int y = (frame_height - crop_height) / 2;
 
+            /*定義出要裁切的範圍*/
             Rect roi(x, y, crop_width, crop_height);
             frame = frame(roi).clone();
 
@@ -146,9 +152,12 @@ int main() {
             int button_radius = 30;
             Point button_center(display.cols / 2, display.rows - button_radius - 10);
             circle(display, button_center, button_radius, Scalar(255, 255, 255), FILLED);
+            //偵測滑鼠點擊範圍(但偵測範圍是能夠包含此圓形的最小方形，所以點擊到附近的空白處還是會凍結畫面)
+            //rect(最左上角的x座標,最左上角的y座標,矩形寬度,矩形高度)
             buttonRect = Rect(button_center.x - button_radius, button_center.y - button_radius, button_radius * 2, button_radius * 2);
 
-            int square_size = 20;
+            int square_size = 25;
+            //最左上角距離左邊界10，底部往上邊長+10
             Point import_top_left(10, display.rows - square_size - 10);
             rectangle(display, Rect(import_top_left.x, import_top_left.y, square_size, square_size), Scalar(255, 255, 255), 2);
             importButtonRect = Rect(import_top_left.x, import_top_left.y, square_size, square_size);
